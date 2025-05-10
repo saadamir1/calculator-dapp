@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calculator DApp</title>
+    <!-- Include Web3.js library -->
+    <script src="https://cdn.jsdelivr.net/npm/web3@latest/dist/web3.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        input, button { padding: 10px; margin: 5px; font-size: 16px; }
+        #result { font-weight: bold; color: blue; }
+    </style>
+</head>
+<body>
+    <h1>Calculator DApp on Ethereum</h1>
+    <div>
+        <label for="num1">Number 1:</label>
+        <input type="number" id="num1" placeholder="Enter first number">
+    </div>
+    <div>
+        <label for="num2">Number 2:</label>
+        <input type="number" id="num2" placeholder="Enter second number">
+    </div>
+    <div>
+        <button onclick="calculate('add')">Add (+)</button>
+        <button onclick="calculate('subtract')">Subtract (-)</button>
+        <button onclick="calculate('multiply')">Multiply (*)</button>
+        <button onclick="calculate('divide')">Divide (/)</button>
+    </div>
+    <h2>Result: <span id="result">0</span></h2>
+    <p id="status"></p>
+    <script>
+        let web3;
+        let contract;
+        let accounts;
+        // Contract details for the Ethereum calculator contract
+        const contractAddress = "0xE0Bd3Cb2040EF19cf90eaA84686625E5Fa488143";
+        const abi = [
+            {
+                "inputs": [
+                    {
+                        "internalType": "int256",
+                        "name": "a",
+                        "type": "int256"
+                    },
+                    {
+                        "internalType": "int256",
+                        "name": "b",
+                        "type": "int256"
+                    }
+                ],
+                "name": "add",
+                "outputs": [
+                    {
+                        "internalType": "int256",
+                        "name": "",
+                        "type": "int256"
+                    }
+                ],
+                "stateMutability": "nonpayable",
+                "type": "function"
+            },
+            {
+                "inputs": [
+                    {
+                        "internalType": "int256",
+                        "name": "a",
+                        "type": "int256"
+                    },
+                    {
+                        "internalType": "int256",
+                        "name": "b",
+                        "type": "int256"
+                    }
+                ],
+                "name": "divide",
+                "outputs": [
+                    {
+                        "internalType": "int256",
+                        "name": "",
+                        "type": "int256"
+                    }
+                ],
+                "stateMutability": "nonpayable",
+                "type": "function"
+            },
+            {
+                "inputs": [
+                    {
+                        "internalType": "int256",
+                        "name": "a",
+                        "type": "int256"
+                    },
+                    {
+                        "internalType": "int256",
+                        "name": "b",
+                        "type": "int256"
+                    }
+                ],
+                "name": "multiply",
+                "outputs": [
+                    {
+                        "internalType": "int256",
+                        "name": "",
+                        "type": "int256"
+                    }
+                ],
+                "stateMutability": "nonpayable",
+                "type": "function"
+            },
+            {
+                "inputs": [
+                    {
+                        "internalType": "int256",
+                        "name": "a",
+                        "type": "int256"
+                    },
+                    {
+                        "internalType": "int256",
+                        "name": "b",
+                        "type": "int256"
+                    }
+                ],
+                "name": "subtract",
+                "outputs": [
+                    {
+                        "internalType": "int256",
+                        "name": "",
+                        "type": "int256"
+                    }
+                ],
+                "stateMutability": "nonpayable",
+                "type": "function"
+            },
+            {
+                "inputs": [],
+                "name": "result",
+                "outputs": [
+                    {
+                        "internalType": "int256",
+                        "name": "",
+                        "type": "int256"
+                    }
+                ],
+                "stateMutability": "view",
+                "type": "function"
+            }
+        ];
+
+        window.addEventListener('load', async () => {
+            const statusEl = document.getElementById("status");
+            statusEl.textContent = "Initializing...";
+            
+            if (contractAddress === "YOUR_DEPLOYED_CONTRACT_ADDRESS_HERE" || abi.length === 0) {
+                alert("CRITICAL: 'contractAddress' or 'abi' is not set in index.html. Please edit the file and paste the correct values from Remix.");
+                statusEl.textContent = "Error: Contract details not set in HTML.";
+                return;
+            }
+            
+            if (typeof window.ethereum !== 'undefined') {
+                web3 = new Web3(window.ethereum);
+                try {
+                    statusEl.textContent = "Requesting account access...";
+                    accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
+                    statusEl.textContent = "MetaMask connected. Account: " + accounts[0].substring(0,10) + "...";
+                    contract = new web3.eth.Contract(abi, contractAddress);
+                    displayCurrentResult(); // Fetch initial result
+                } catch (error) {
+                    console.error("User denied account access or error occurred.", error);
+                    statusEl.textContent = "MetaMask connection error. See console.";
+                    alert("MetaMask connection error: " + error.message);
+                }
+            } else if (typeof window.web3 !== 'undefined') { // Legacy dapp browsers
+                web3 = new Web3(window.web3.currentProvider);
+                accounts = await web3.eth.getAccounts(); // Legacy way
+                statusEl.textContent = "Legacy DApp browser detected. Account: " + accounts[0].substring(0,10) + "...";
+                contract = new web3.eth.Contract(abi, contractAddress);
+                displayCurrentResult();
+            } else {
+                statusEl.textContent = "Non-Ethereum browser detected. Please install MetaMask!";
+                alert("Non-Ethereum browser detected. You should consider trying MetaMask!");
+            }
+        });
+
+        async function displayCurrentResult() {
+            if (!contract) return;
+            const resultEl = document.getElementById("result");
+            try {
+                resultEl.textContent = "Fetching...";
+                const res = await contract.methods.result().call();
+                resultEl.textContent = res;
+            } catch (error) {
+                console.error("Error fetching result:", error);
+                resultEl.textContent = "Error";
+                document.getElementById("status").textContent = "Error fetching result: " + error.message;
+            }
+        }
+
+        async function calculate(operation) {
+            const statusEl = document.getElementById("status");
+            if (!contract || !accounts || accounts.length === 0) {
+                statusEl.textContent = "DApp not ready. Check MetaMask connection and account.";
+                alert("DApp not ready. Ensure MetaMask is connected and an account is selected.");
+                return;
+            }
+            
+            const num1Input = document.getElementById("num1").value;
+            const num2Input = document.getElementById("num2").value;
+            
+            if (num1Input === "" || num2Input === "") {
+                alert("Please enter both numbers.");
+                statusEl.textContent = "Input error: Please enter both numbers.";
+                return;
+            }
+            
+            const a = parseInt(num1Input);
+            const b = parseInt(num2Input);
+            
+            if (isNaN(a) || isNaN(b)) {
+                alert("Please enter valid numbers.");
+                statusEl.textContent = "Input error: Invalid numbers.";
+                return;
+            }
+            
+            let transactionMethod;
+            if (operation === "add") transactionMethod = contract.methods.add(a, b);
+            else if (operation === "subtract") transactionMethod = contract.methods.subtract(a, b);
+            else if (operation === "multiply") transactionMethod = contract.methods.multiply(a, b);
+            else if (operation === "divide") {
+                if (b === 0) {
+                    alert("Error: Cannot divide by zero.");
+                    document.getElementById("result").innerText = "Error: Division by zero";
+                    statusEl.textContent = "Error: Division by zero attempt.";
+                    return;
+                }
+                transactionMethod = contract.methods.divide(a, b);
+            } else {
+                alert("Invalid operation selected.");
+                statusEl.textContent = "Error: Invalid operation.";
+                return;
+            }
+            
+            document.getElementById("result").innerText = "Processing...";
+            statusEl.textContent = `Sending ${operation} transaction...`;
+            
+            try {
+                const receipt = await transactionMethod.send({ from: accounts[0] });
+                statusEl.textContent = `Transaction successful! Tx hash: ${receipt.transactionHash.substring(0,10)}...`;
+                console.log("Transaction successful:", receipt);
+                await displayCurrentResult(); // Update result after transaction is mined
+            } catch (error) {
+                console.error("Error during transaction:", error);
+                document.getElementById("result").innerText = "Tx Error";
+                statusEl.textContent = "Transaction error: " + error.message;
+                // alert("Transaction Error: " + error.message);
+                await displayCurrentResult(); 
+            }
+        }
+    </script>
+</body>
+</html>
